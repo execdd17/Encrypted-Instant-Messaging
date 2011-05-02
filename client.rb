@@ -20,7 +20,8 @@ end
 STDOUT.puts "Connection Established" if $debug   
 Thread.current.priority = -1
 
-begin 
+begin
+	# Use the active session to continue to send data back and forth
 	loop do
 		if @send == nil or @send.alive? == false then
 			puts "inside send"
@@ -46,28 +47,42 @@ begin
 			puts "inside receive"
 			@receive = Thread.new do 
 				cipher_text = @streamSock.recv(1000)	# hard cap on incoming data (buffer)
-			
+				msgs = []		
+
 				if cipher_text != nil and cipher_text != '' then
-					cipher_text = cipher_text.chomp.split(':')
+					#cipher_text = cipher_text.gsub("\n",'').split(':')
+					cipher_text = cipher_text.split("\n")	#get all messages, ARRAY
+					cipher_text.each { |message| msgs << message.split(':') } # 2d ARRAY						
 
 				# this condition is reached when the user hit just the enter key instead of a msg
 				else
 					puts "User Sent Empty String" if $debug
 					next
 				end
+	
+				msgs.each do |msg|
+					#puts msg
+					ct = msg.map { |string_byte| string_byte.to_i.chr }
+					puts "#{$remote_host}: #{decrypt($key, ct.join)}"
+				end
 
-				puts "Recieved [#{cipher_text.join(':')}] ciphertext" if $debug
-		
-				cipher_text = cipher_text.map { |string_byte| string_byte.to_i.chr }
-				puts "#{$remote_host}: #{decrypt($key, cipher_text.join)}"
+				#puts "Recieved [#{cipher_text.join(':')}] ciphertext" if $debug
+				#cipher_text = cipher_text.map { |string_byte| string_byte.to_i.chr }
+				#puts "Mapped CT"
+				#puts "#{$remote_host}: #{decrypt($key, cipher_text.join)}"
+				#puts decrypt($key, cipher_text.join)
 			end
 		end
 
 		while (@send == nil or @send.alive?) and (@receieve == nil or @receive.alive?)
-			#puts "Inside Loop. #{@send} #{@receive}"
-			sleep 1
+			puts "Inside Loop. #{@send} #{@receive}"
+			sleep 5
 		end
 	end
+rescue Exception => e
+	puts e.message
+	puts e.backtrace.inspect
+	exit
 ensure
 	puts "Closing Connection" if $debug
 	@streamSock.close if not @streamSock.closed?
