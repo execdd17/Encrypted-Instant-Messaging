@@ -24,7 +24,7 @@ begin
 	# Use the active session to continue to send data back and forth
 	loop do
 		if @send == nil or @send.alive? == false then
-			puts "inside send"
+			#puts "inside send"
 			@send = Thread.new do 
 				plain_text = STDIN.gets.strip
 
@@ -44,9 +44,8 @@ begin
 		end
 
 		if @receive == nil or @receive.alive? == false then
-			puts "inside receive"
 			@receive = Thread.new do 
-				cipher_text = @streamSock.recv(1000)	# hard cap on incoming data (buffer)
+				cipher_text = @streamSock.recv(1000, Socket::MSG_DONTWAIT)	# hard cap on incoming data (buffer)
 				msgs = []		
 
 				if cipher_text != nil and cipher_text != '' then
@@ -74,9 +73,9 @@ begin
 			end
 		end
 
-		while (@send == nil or @send.alive?) and (@receieve == nil or @receive.alive?)
-			puts "Inside Loop. #{@send} #{@receive}"
-			sleep 5
+		while @send.alive? and @receive.alive?
+			#puts "Inside Loop. #{@send} #{@receive}"
+			sleep 1
 		end
 	end
 rescue Exception => e
@@ -87,3 +86,5 @@ ensure
 	puts "Closing Connection" if $debug
 	@streamSock.close if not @streamSock.closed?
 end
+
+# ["MSG_EOR", "MSG_TRUNC", "MSG_OOB", "MSG_CTRUNC", "MSG_PEEK", "MSG_WAITALL", "MSG_DONTROUTE", "MSG_DONTWAIT"]
