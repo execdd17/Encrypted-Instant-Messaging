@@ -6,7 +6,7 @@ if ARGV.length != 3 then
 	exit
 end
 
-$s_port, $c_port, $key = ARGV[0], ARGV[1], ARGV[2]
+$s_port, $c_port, $key = ARGV
 	
 def start_server(server, port)
 
@@ -14,7 +14,7 @@ def start_server(server, port)
 		while client = server.accept
 			begin
 				print(client, " is accepted\n\n")
-				cipher_text = client.recv(100).chomp.split(':')
+				cipher_text = client.recv(1000).chomp.split(':')
 				puts "Recieved [#{cipher_text.join(':')}] ciphertext"
 				if cipher_text then
 					cipher_text = cipher_text.map { |string_byte| string_byte.to_i.chr }
