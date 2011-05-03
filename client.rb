@@ -2,7 +2,7 @@ require 'socket'
 require 'engine'
 
 $remote_host, $remote_port, $key = '192.168.111.49', 20000, 'key'
-$debug = true
+$debug = false
 connection = false
 continue = true
 
@@ -31,9 +31,9 @@ begin
 				plain_text = STDIN.gets.strip
 
 				if plain_text == '' or plain_text == nil then
-					puts "Closing Connection" if $debug
+					puts "Closing Connection and Exiting Program.."
 					@streamSock.close
-					next
+					exit
 				end
 
 				cipher_text = []
@@ -80,6 +80,7 @@ begin
 		end
 	end
 rescue Exception => e
+	exit if SystemExit === e	# exit exception called earlier
 	puts e.message
 	puts e.backtrace.inspect
 	exit

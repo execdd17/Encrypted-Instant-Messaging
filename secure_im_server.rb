@@ -53,10 +53,6 @@ TCPServer.open($local_host, $local_port) do |server|
 							puts "#{client.addr[-1]}: #{decrypt($key, ct.join)}"
 						end
 
-						#puts "Recieved [#{cipher_text.join(':')}] ciphertext" if $debug
-		
-						#cipher_text = cipher_text.map { |string_byte| string_byte.to_i.chr }
-						#puts "#{client.addr[-1]}: #{decrypt($key, cipher_text.join)}"
 					end
 				end
 
@@ -66,10 +62,10 @@ TCPServer.open($local_host, $local_port) do |server|
 					@send = Thread.new do 
 						plain_text = STDIN.gets.strip
 
+						# stop processing for this session and close connection 
 						if plain_text == '' or plain_text == nil then
-							puts "Closing Connection" if $debug
-							client.close
-							next
+							@continue = false
+							break
 						end
 
 						cipher_text = []
