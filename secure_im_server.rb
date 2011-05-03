@@ -28,7 +28,14 @@ TCPServer.open(local_host, local_port) do |server|
 				if @receive == nil or @receive.alive? == false then
 					#puts "inside receive"
 					@receive = Thread.new do
-						cipher_text = client.recv(1000, Socket::MSG_DONTWAIT)	# hard cap on incoming data (buffer)
+						
+						# hard cap on incoming data (buffer)
+						# NOTE: Changing this will determine how much data can be accepted at a time
+						# before the blocks get fragmented and bad things happen. For example, with a size
+						# of 100,000 you can send 4000 A's in a single msg, but you wouldn't be able to do that
+						# with size 1000. You would just get a decrypt error because you're trying to decrypt
+						# only a subset of the entire message when you need to do it all.
+						cipher_text = client.recv(5000, Socket::MSG_DONTWAIT)	
 						msgs = []		
 				
 						if cipher_text != nil and cipher_text != '' then
@@ -50,10 +57,41 @@ TCPServer.open(local_host, local_port) do |server|
 							ct = msg.map { |string_byte| string_byte.to_i.chr }
 
 							begin
-								puts "#{client.addr[-1]}: #{decrypt(key, ct.join)}"
+								#puts "#{client.addr[-1]}: #{decrypt(key, ct.join)}"
+								plain_text = decrypt(key, ct.join)
+
+								#check hmac
+								plain_text = plain_text.chars.to_a
+								#puts "Plain_text is #{plain_text}"
+
+								hmac_start = plain_text.length-64
+								hmac_end = plain_text.length-1
+
+								#puts "Length of MSG #{plain_text.length}"
+								#puts "START: #{plain_text[hmac_start].hex}"
+								#puts "END: #{plain_text[hmac_end].hex}"
+								
+								recv_hmac = plain_text.slice(hmac_start..hmac_end)
+								plain_text = plain_text.slice(0..(hmac_start-1))
+
+								#puts "HMAC length is #{recv_hmac.length}"
+								#puts "Receieved Message #{plain_text.join(':')}"
+
+								hmac = OpenSSL::HMAC.digest('SHA512', key, plain_text.join)
+								#puts "local: #{hmac}", hmac.length
+								#puts "given: #{recv_hmac.join}", recv_hmac.length
+
+								if hmac == recv_hmac.join then
+									puts "HMAC Match" if debug
+									puts "#{client.addr[-1]}: #{plain_text.join}"
+								else
+									raise OpenSSL::HMACError, "HMACs do not match!"
+								end
+
+							# Can be the result of using different keys on each end, or too small a recv
+							# buffer
 							rescue OpenSSL::Cipher::CipherError => e
 								puts "An Error Occurred While Decrypting.."
-								puts "Possible Invalid Key"
 								puts e.message if debug
 								puts e.backtrace.inspect if debug
 							end
@@ -74,8 +112,12 @@ TCPServer.open(local_host, local_port) do |server|
 							break
 						end
 
+						## hmac creation; 64 bytes appended to plain_text msg
+						hmac = OpenSSL::HMAC.digest('SHA512', key, plain_text)
+						full_msg = plain_text + hmac
+
 						cipher_text = []
-						encrypt(key, plain_text).bytes { |byte| cipher_text << byte }
+						encrypt(key, full_msg).bytes { |byte| cipher_text << byte }
 						ct = cipher_text.join(':') + "\n"
 						puts "Sending [#{ct.chomp}]" if debug
 						client.send(ct,0)
