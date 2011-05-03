@@ -7,8 +7,8 @@ if ARGV.length != 3 then
 end
 
 
-$remote_host, $remote_port, $key = ARGV
-$debug = false
+remote_host, remote_port, key = ARGV
+debug = false
 
 connection = false
 continue = true
@@ -16,7 +16,7 @@ continue = true
 # Try to connect to the server every 5 seconds until successful
 while not connection
 	begin
-		@streamSock = TCPSocket.new($remote_host, $remote_port )
+		@streamSock = TCPSocket.new(remote_host, remote_port )
 		connection = true
 	rescue Errno::ECONNREFUSED => e
 		puts "The connection was refused..."
@@ -44,11 +44,11 @@ begin
 				end
 
 				cipher_text = []
-				encrypt($key, plain_text).bytes { |byte| cipher_text << byte }
+				encrypt(key, plain_text).bytes { |byte| cipher_text << byte }
 				ct = cipher_text.join(':') + "\n"
-				puts "Sending [#{ct.chomp}]" if $debug
+				puts "Sending [#{ct.chomp}]" if debug
 				@streamSock.send(ct,0)
-				puts "Sent!" if $debug
+				puts "Sent!" if debug
 			end
 		end
 
@@ -68,7 +68,7 @@ begin
 					next
 				# If it gets here then it's a bug
 				else
-					puts "User Sent #{cipher_text}, but I don't know what to do with it" if $debug
+					puts "User Sent #{cipher_text}, but I don't know what to do with it" if debug
 					next
 				end
 	
@@ -77,12 +77,12 @@ begin
 					ct = msg.map { |string_byte| string_byte.to_i.chr }
 
 					begin
-						puts "#{$remote_host}: #{decrypt($key, ct.join)}"
+						puts "#{remote_host}: #{decrypt(key, ct.join)}"
 					rescue OpenSSL::Cipher::CipherError => e
 						puts "An Error Occurred While Decrypting.."
 						puts "Possible Invalid Key"
-						puts e.message if $debug
-						puts e.backtrace.inspect if $debug
+						puts e.message if debug
+						puts e.backtrace.inspect if debug
 					end
 
 				end

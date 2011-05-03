@@ -6,17 +6,17 @@ if ARGV.length != 3 then
 	exit
 end
 
-$local_host, $local_port, $key = ARGV
-$debug = true
+local_host, local_port, key = ARGV
+debug = true
 
 
-TCPServer.open($local_host, $local_port) do |server|
+TCPServer.open(local_host, local_port) do |server|
 
 	# Continue to accept connections even after closing one
 	while client = server.accept
 
 		begin
-			puts "Connection Established" if $debug
+			puts "Connection Established" if debug
 			Thread.current.priority = -1
 			@continue = true
 			
@@ -41,7 +41,7 @@ TCPServer.open($local_host, $local_port) do |server|
 							@continue = false
 							next
 						else
-							puts "User Sent #{cipher_text}, but I don't know what to do with it" if $debug
+							puts "User Sent #{cipher_text}, but I don't know what to do with it" if debug
 							next
 						end
 
@@ -50,12 +50,12 @@ TCPServer.open($local_host, $local_port) do |server|
 							ct = msg.map { |string_byte| string_byte.to_i.chr }
 
 							begin
-								puts "#{client.addr[-1]}: #{decrypt($key, ct.join)}"
+								puts "#{client.addr[-1]}: #{decrypt(key, ct.join)}"
 							rescue OpenSSL::Cipher::CipherError => e
 								puts "An Error Occurred While Decrypting.."
 								puts "Possible Invalid Key"
-								puts e.message if $debug
-								puts e.backtrace.inspect if $debug
+								puts e.message if debug
+								puts e.backtrace.inspect if debug
 							end
 						end
 
@@ -75,11 +75,11 @@ TCPServer.open($local_host, $local_port) do |server|
 						end
 
 						cipher_text = []
-						encrypt($key, plain_text).bytes { |byte| cipher_text << byte }
+						encrypt(key, plain_text).bytes { |byte| cipher_text << byte }
 						ct = cipher_text.join(':') + "\n"
-						puts "Sending [#{ct.chomp}]" if $debug
+						puts "Sending [#{ct.chomp}]" if debug
 						client.send(ct,0)
-						puts "Sent!" if $debug
+						puts "Sent!" if debug
 					end
 				end
 
@@ -95,7 +95,7 @@ TCPServer.open($local_host, $local_port) do |server|
 			puts e.backtrace.inspect
 			exit
 		ensure
-			puts "Closing Connection" if $debug
+			puts "Closing Connection" if debug
 			client.close if not client.closed?
 		end
 	end
