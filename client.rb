@@ -1,10 +1,12 @@
 require 'socket'
 require 'engine'
 
-$remote_host, $remote_port, $key = 'localhost', 20000, 'key'
+$remote_host, $remote_port, $key = '192.168.111.49', 20000, 'key'
 $debug = true
 connection = false
+continue = true
 
+# Try to connect to the server every 5 seconds until successful
 while not connection
 	begin
 		@streamSock = TCPSocket.new($remote_host, $remote_port )
@@ -17,12 +19,12 @@ while not connection
 	end
 end
 
-STDOUT.puts "Connection Established" if $debug   
+STDOUT.puts "Connection Established" 
 Thread.current.priority = -1
 
 begin
 	# Use the active session to continue to send data back and forth
-	loop do
+	while continue
 		if @send == nil or @send.alive? == false then
 			#puts "inside send"
 			@send = Thread.new do 
@@ -51,11 +53,15 @@ begin
 				if cipher_text != nil and cipher_text != '' then
 					#cipher_text = cipher_text.gsub("\n",'').split(':')
 					cipher_text = cipher_text.split("\n")	#get all messages, ARRAY
-					cipher_text.each { |message| msgs << message.split(':') } # 2d ARRAY						
-
+					cipher_text.each { |message| msgs << message.split(':') } # 2d ARRAY					
 				# this condition is reached when the user hit just the enter key instead of a msg
+				elsif @streamSock.eof?
+					puts "EOF Detected!"
+					continue = false
+					next
+				# If it gets here then it's a bug
 				else
-					puts "User Sent Empty String" if $debug
+					puts "User Sent #{cipher_text}, but I don't know what to do with it" if $debug
 					next
 				end
 	
@@ -65,11 +71,6 @@ begin
 					puts "#{$remote_host}: #{decrypt($key, ct.join)}"
 				end
 
-				#puts "Recieved [#{cipher_text.join(':')}] ciphertext" if $debug
-				#cipher_text = cipher_text.map { |string_byte| string_byte.to_i.chr }
-				#puts "Mapped CT"
-				#puts "#{$remote_host}: #{decrypt($key, cipher_text.join)}"
-				#puts decrypt($key, cipher_text.join)
 			end
 		end
 
@@ -83,8 +84,10 @@ rescue Exception => e
 	puts e.backtrace.inspect
 	exit
 ensure
-	puts "Closing Connection" if $debug
-	@streamSock.close if not @streamSock.closed?
+	if not @streamSock.closed? then
+		puts "Closing Connection"
+		@streamSock.close
+	end
 end
 
 # ["MSG_EOR", "MSG_TRUNC", "MSG_OOB", "MSG_CTRUNC", "MSG_PEEK", "MSG_WAITALL", "MSG_DONTROUTE", "MSG_DONTWAIT"]
