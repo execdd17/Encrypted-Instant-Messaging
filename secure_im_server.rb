@@ -1,12 +1,12 @@
 require 'socket'
 require 'engine'
 
-#if ARGV.length != 5 then
-#	puts "usage: #{$0} [local host] [local port] [remote host] [remote port] [key]"
-#	exit
-#end
+if ARGV.length != 3 then
+	puts "usage: #{$0} [local host] [local port] [key]"
+	exit
+end
 
-$local_host, $local_port, $key = '192.168.111.49', 20000, 'key'
+$local_host, $local_port, $key = ARGV
 $debug = true
 
 
@@ -32,10 +32,8 @@ TCPServer.open($local_host, $local_port) do |server|
 						msgs = []		
 				
 						if cipher_text != nil and cipher_text != '' then
-							#cipher_text = cipher_text.gsub("\n",'').split(':')
 							cipher_text = cipher_text.split("\n")	#get all messages, ARRAY
 							cipher_text.each { |message| msgs << message.split(':') } # 2d ARRAY	
-							#cipher_text = cipher_text.chomp.split(':')
 
 						# this condition is reached when the user hit just the enter key instead of a msg
 						elsif client.eof?
@@ -50,7 +48,15 @@ TCPServer.open($local_host, $local_port) do |server|
 						msgs.each do |msg|
 							#puts msg
 							ct = msg.map { |string_byte| string_byte.to_i.chr }
-							puts "#{client.addr[-1]}: #{decrypt($key, ct.join)}"
+
+							begin
+								puts "#{client.addr[-1]}: #{decrypt($key, ct.join)}"
+							rescue OpenSSL::Cipher::CipherError => e
+								puts "An Error Occurred While Decrypting.."
+								puts "Possible Invalid Key"
+								puts e.message if $debug
+								puts e.backtrace.inspect if $debug
+							end
 						end
 
 					end
