@@ -8,7 +8,7 @@ end
 
 
 remote_host, remote_port, key = ARGV
-debug = false
+debug = true
 
 connection = false
 continue = true
@@ -42,9 +42,13 @@ begin
 					@streamSock.close
 					exit
 				end
+				
+				## hmac creation; 64 bytes appended to plain_text msg
+				hmac = OpenSSL::HMAC.digest('SHA512', key, plain_text)
+				full_msg = plain_text + hmac
 
 				cipher_text = []
-				encrypt(key, plain_text).bytes { |byte| cipher_text << byte }
+				encrypt(key, full_msg).bytes { |byte| cipher_text << byte }
 				ct = cipher_text.join(':') + "\n"
 				puts "Sending [#{ct.chomp}]" if debug
 				@streamSock.send(ct,0)
@@ -54,7 +58,7 @@ begin
 
 		if @receive == nil or @receive.alive? == false then
 			@receive = Thread.new do 
-				cipher_text = @streamSock.recv(1000, Socket::MSG_DONTWAIT)	# hard cap on incoming data (buffer)
+				cipher_text = @streamSock.recv(5000, Socket::MSG_DONTWAIT)	# hard cap on incoming data (buffer)
 				msgs = []		
 
 				if cipher_text != nil and cipher_text != '' then
@@ -77,7 +81,26 @@ begin
 					ct = msg.map { |string_byte| string_byte.to_i.chr }
 
 					begin
-						puts "#{remote_host}: #{decrypt(key, ct.join)}"
+						plain_text = decrypt(key, ct.join)
+						
+						#check hmac
+						plain_text = plain_text.chars.to_a
+
+						hmac_start = plain_text.length-64
+						hmac_end = plain_text.length-1
+
+						recv_hmac = plain_text.slice(hmac_start..hmac_end)
+						plain_text = plain_text.slice(0..(hmac_start-1))
+
+						hmac = OpenSSL::HMAC.digest('SHA512', key, plain_text.join)
+
+						if hmac == recv_hmac.join then
+							puts "HMAC Match" if debug
+							puts "#{remote_host}: #{plain_text.join}"
+						else
+							raise OpenSSL::HMACError, "HMACs do not match!"
+						end 
+
 					rescue OpenSSL::Cipher::CipherError => e
 						puts "An Error Occurred While Decrypting.."
 						puts "Possible Invalid Key"
