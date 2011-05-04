@@ -8,7 +8,7 @@ end
 
 
 remote_host, remote_port, key = ARGV
-debug = false
+debug = true
 
 connection = false
 continue = true
