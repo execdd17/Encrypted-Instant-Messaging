@@ -1,8 +1,9 @@
 require 'openssl'
 
 def aes(m,k,t)
-	  (aes = OpenSSL::Cipher::Cipher.new('aes-256-cbc').send(m)).key = Digest::SHA256.digest(k)
-	    aes.update(t) << aes.final
+	(aes = OpenSSL::Cipher::Cipher.new('aes-256-cbc').send(m)).key = 
+    Digest::SHA256.digest(k)
+  aes.update(t) << aes.final
 end
 
 def encrypt(key, text)

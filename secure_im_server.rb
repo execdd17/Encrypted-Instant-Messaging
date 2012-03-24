@@ -1,5 +1,5 @@
 require 'socket'
-require 'engine'
+require './engine'
 
 if ARGV.length != 3 then
 	puts "usage: #{$0} [local host] [local port] [key]"
@@ -30,10 +30,12 @@ TCPServer.open(local_host, local_port) do |server|
 					@receive = Thread.new do
 						
 						# hard cap on incoming data (buffer)
-						# NOTE: Changing this will determine how much data can be accepted at a time
-						# before the blocks get fragmented and bad things happen. For example, with a size
-						# of 100,000 you can send 4000 A's in a single msg, but you wouldn't be able to do that
-						# with size 1000. You would just get a decrypt error because you're trying to decrypt
+						# NOTE: Changing this will determine how much data can be accepted 
+            # at a time before the blocks get fragmented and bad things happen. 
+            # For example, with a size
+						# of 100,000 you can send 4000 A's in a single msg, but you 
+            # wouldn't be able to do that with size 1000. You would just get 
+            # a decrypt error because you're trying to decrypt
 						# only a subset of the entire message when you need to do it all.
 						cipher_text = client.recv(5000, Socket::MSG_DONTWAIT)	
 						msgs = []		
@@ -42,7 +44,8 @@ TCPServer.open(local_host, local_port) do |server|
 							cipher_text = cipher_text.split("\n")	#get all messages, ARRAY
 							cipher_text.each { |message| msgs << message.split(':') } # 2d ARRAY	
 
-						# this condition is reached when the user hit just the enter key instead of a msg
+						# this condition is reached when the user hit just the enter key 
+            # instead of a msg
 						elsif client.eof?
 							puts "EOF Detected!"
 							@continue = false
@@ -88,8 +91,8 @@ TCPServer.open(local_host, local_port) do |server|
 									raise OpenSSL::HMACError, "HMACs do not match!"
 								end
 
-							# Can be the result of using different keys on each end, or too small a recv
-							# buffer
+							# Can be the result of using different keys on each end, or too 
+              # small a recv buffer
 							rescue OpenSSL::Cipher::CipherError => e
 								puts "An Error Occurred While Decrypting.."
 								puts e.message if debug

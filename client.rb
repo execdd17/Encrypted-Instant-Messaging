@@ -1,5 +1,5 @@
 require 'socket'
-require 'engine'
+require './engine'
 
 if ARGV.length != 3 then
 	puts "usage: #{$0} [remote host] [remote port] [key]"
@@ -32,7 +32,7 @@ Thread.current.priority = -1
 begin
 	# Use the active session to continue to send data back and forth
 	while continue
-		if @send == nil or @send.alive? == false then
+		if @send == nil or not @send.alive? then
 			#puts "inside send"
 			@send = Thread.new do 
 				plain_text = STDIN.gets.strip
@@ -56,12 +56,14 @@ begin
 			end
 		end
 
-		if @receive == nil or @receive.alive? == false then
+		if @receive == nil or not @receive.alive? then
 			@receive = Thread.new do 
-				cipher_text = @streamSock.recv(5000, Socket::MSG_DONTWAIT)	# hard cap on incoming data (buffer)
+
+        # hard cap on incoming data (buffer)
+				cipher_text = @streamSock.recv(5000, Socket::MSG_DONTWAIT)	
 				msgs = []		
 
-				if cipher_text != nil and cipher_text != '' then
+				if cipher_text and cipher_text != '' then
 					#cipher_text = cipher_text.gsub("\n",'').split(':')
 					cipher_text = cipher_text.split("\n")	#get all messages, ARRAY
 					cipher_text.each { |message| msgs << message.split(':') } # 2d ARRAY					
