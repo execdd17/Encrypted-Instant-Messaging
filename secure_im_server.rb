@@ -17,7 +17,7 @@ TCPServer.open(local_host, local_port) do |server|
 
 		begin
 			puts "Connection Established" if debug
-			Thread.current.priority = -1
+			Thread.current.priority = -10
 			@continue = true
 			
 			# keep pushing out send and receive threads until the user enters a blank line
@@ -26,7 +26,7 @@ TCPServer.open(local_host, local_port) do |server|
 			
 				# Check if a receive thread is running or exists before creating a new one
 				if @receive == nil or @receive.alive? == false then
-					#puts "inside receive"
+					puts "inside receive"
 					@receive = Thread.new do
 						
 						# hard cap on incoming data (buffer)
@@ -104,8 +104,8 @@ TCPServer.open(local_host, local_port) do |server|
 				end
 
 				# Check if a send thread is running or exists before creating a new one
-				if @send == nil or @send.alive? == false then
-					#puts "inside send"
+				if @send == nil or not @send.alive? then
+					puts "inside send"
 					@send = Thread.new do 
 						plain_text = STDIN.gets.strip
 
@@ -131,8 +131,8 @@ TCPServer.open(local_host, local_port) do |server|
 				# busy loop until either a send or receive thread finishes
 				# NOTE: Wait/Notify would be more efficient
 				while @send.alive? and @receive.alive?
-					#puts "Inside Loop. #{@send} #{@receive}"
-					sleep 1
+					puts "Inside Loop. #{@send} #{@receive}"
+					sleep 2
 				end
 			end
 		rescue Exception => e
@@ -141,7 +141,7 @@ TCPServer.open(local_host, local_port) do |server|
 			exit
 		ensure
 			puts "Closing Connection" if debug
-			client.close if not client.closed?
+			client.close unless client.closed?
 		end
 	end
 end
