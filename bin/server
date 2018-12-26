@@ -1,5 +1,13 @@
+#!/usr/bin/env ruby
+
+$:.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
+
+require 'encrypted_instant_messaging'
+
 require 'socket'
 require 'engine'
+
+include EncryptedInstantMessaging::Engine
 
 if ARGV.length != 3 then
 	puts "usage: #{$0} [local host] [local port] [key]"
