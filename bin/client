@@ -33,7 +33,8 @@ while not connection
 	end
 end
 
-STDOUT.puts "Connection Established" 
+puts "Connection Established" 
+puts "Enter your messages follwed by the return key. All connected individuals will receive your messages"
 Thread.current.priority = -1
 
 begin
