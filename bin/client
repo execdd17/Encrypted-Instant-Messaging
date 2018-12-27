@@ -9,13 +9,13 @@ require 'engine'
 
 include EncryptedInstantMessaging::Engine
 
-if ARGV.length != 3 then
-	puts "usage: #{$0} [remote host] [remote port] [key]"
+if ARGV.length != 4 then
+	puts "usage: #{$0} [remote host] [remote port] [handle] [key]"
 	exit
 end
 
 
-remote_host, remote_port, key = ARGV
+remote_host, remote_port, handle, key = ARGV
 debug = false
 
 connection = false
@@ -43,21 +43,20 @@ begin
 		if @send == nil or @send.alive? == false then
 			#puts "inside send"
 			@send = Thread.new do 
-				print 'me: '
-				plain_text = STDIN.gets.strip
+				payload = STDIN.gets.strip
 
-				if plain_text == '' or plain_text == nil then
+				if payload == '' or payload == nil then
 					puts "Closing Connection and Exiting Program.."
 					@streamSock.close
 					exit
 				end
 				
-				## hmac creation; 64 bytes appended to plain_text msg
-				hmac = OpenSSL::HMAC.digest('SHA512', key, plain_text)
-				full_msg = plain_text + hmac
+				## hmac creation; 64 bytes appended to payload
+				hmac = OpenSSL::HMAC.digest('SHA512', key, payload)
+				message = Message.create_message(handle, payload, hmac)
 
 				cipher_text = []
-				encrypt(key, full_msg).bytes { |byte| cipher_text << byte }
+				encrypt(key, message.serialize).bytes { |byte| cipher_text << byte }
 				ct = cipher_text.join(':') + "\n"
 				puts "Sending [#{ct.chomp}]" if debug
 				@streamSock.send(ct,0)
@@ -68,12 +67,12 @@ begin
 		if @receive == nil or @receive.alive? == false then
 			@receive = Thread.new do 
 				cipher_text = @streamSock.recv(5000)	# hard cap on incoming data (buffer)
-				msgs = []		
+				lines = []		
 
 				if cipher_text != nil and cipher_text != '' then
 					#cipher_text = cipher_text.gsub("\n",'').split(':')
 					cipher_text = cipher_text.split("\n")	#get all messages, ARRAY
-					cipher_text.each { |message| msgs << message.split(':') } # 2d ARRAY					
+					cipher_text.each { |message| lines << message.split(':') } # 2d ARRAY					
 				# this condition is reached when the user hit just the enter key instead of a msg
 				elsif @streamSock.eof?
 					puts "EOF Detected!"
@@ -85,27 +84,20 @@ begin
 					next
 				end
 	
-				msgs.each do |msg|
+				decrypted_msg = lines.map do |line|
 					#puts msg
-					ct = msg.map { |string_byte| string_byte.to_i.chr }
+					ct = line.map { |string_byte| string_byte.to_i.chr }
 
 					begin
-						plain_text = decrypt(key, ct.join)
+						plaintext = decrypt(key, ct.join)
+						message = Message.parse_message(plaintext)
 						
-						#check hmac
-						plain_text = plain_text.chars.to_a
+						expected_hmac = OpenSSL::HMAC.digest('SHA512', key, message.payload)
 
-						hmac_start = plain_text.length-64
-						hmac_end = plain_text.length-1
-
-						recv_hmac = plain_text.slice(hmac_start..hmac_end)
-						plain_text = plain_text.slice(0..(hmac_start-1))
-
-						hmac = OpenSSL::HMAC.digest('SHA512', key, plain_text.join)
-
-						if hmac == recv_hmac.join then
+						if expected_hmac == message.hmac then
 							puts "HMAC Match" if debug
-							puts "#{remote_host}: #{plain_text.join}"
+							message.to_s 
+							
 						else
 							raise OpenSSL::HMACError, "HMACs do not match!"
 						end 
@@ -116,9 +108,12 @@ begin
 						puts "An Error Occurred While Decrypting.."
 						puts e.message if debug
 						puts e.backtrace.inspect if debug
+						"?????????"
 					end
 
 				end
+
+				puts decrypted_msg.join(" ")
 
 			end
 		end

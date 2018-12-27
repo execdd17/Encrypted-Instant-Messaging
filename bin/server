@@ -11,9 +11,8 @@ require 'logger'
 class ServerHelper
 	include EncryptedInstantMessaging::Engine
 
-	def initialize(key)
-		@key = key
-		@client_manager = ClientManager.new(key)
+	def initialize
+		@client_manager = ClientManager.new
 		@logger = Logger.new(STDOUT)
 		@logger.level = Logger::DEBUG
 	end
@@ -37,65 +36,17 @@ class ServerHelper
 				# with size 1000. You would just get a decrypt error because you're trying to decrypt
 				# only a subset of the entire message when you need to do it all.
 				cipher_text = client.recv(5000)		
-				msgs = []		
 		
 				if cipher_text != nil and cipher_text != '' then
-					cipher_text = cipher_text.split("\n")	#get all messages, ARRAY
-					cipher_text.each { |message| msgs << message.split(':') } # 2d ARRAY	
-
+					@client_manager.broadcast_messages(cipher_text, client)
 				# this condition is reached when the user hit just the enter key instead of a msg
 				elsif client.eof?
 					@logger.debug "EOF Detected!"
 					continue = false
 					next
 				else
-					@logger.warn "User Sent #{cipher_text}, but I don't know what to do with it"
+					@logger.warn "Client Sent #{cipher_text}, but I don't know what to do with it"
 					next
-				end
-
-				msgs.each do |msg|
-					#puts msg
-					ct = msg.map { |string_byte| string_byte.to_i.chr }
-
-					begin
-						#puts "#{client.addr[-1]}: #{decrypt(key, ct.join)}"
-						plain_text = decrypt(@key, ct.join)
-
-						#check hmac
-						plain_text = plain_text.chars.to_a
-						#puts "Plain_text is #{plain_text}"
-
-						hmac_start = plain_text.length-64
-						hmac_end = plain_text.length-1
-
-						#puts "Length of MSG #{plain_text.length}"
-						#puts "START: #{plain_text[hmac_start].hex}"
-						#puts "END: #{plain_text[hmac_end].hex}"
-						
-						recv_hmac = plain_text.slice(hmac_start..hmac_end)
-						plain_text = plain_text.slice(0..(hmac_start-1))
-
-						#puts "HMAC length is #{recv_hmac.length}"
-						#puts "Receieved Message #{plain_text.join(':')}"
-
-						hmac = OpenSSL::HMAC.digest('SHA512', @key, plain_text.join)
-						#puts "local: #{hmac}", hmac.length
-						#puts "given: #{recv_hmac.join}", recv_hmac.length
-
-						if hmac == recv_hmac.join then
-							@logger.debug "HMAC Match"
-							@client_manager.broadcast_messages(plain_text.join)
-						else
-							raise OpenSSL::HMACError, "HMACs do not match!"
-						end
-
-					# Can be the result of using different keys on each end, or too small a recv
-					# buffer
-					rescue OpenSSL::Cipher::CipherError => e
-						@logger.error "An Error Occurred While Decrypting.."
-						@logger.error e.message
-						@logger.error e.backtrace.inspect
-					end
 				end
 			end
 		rescue Exception => e
@@ -109,17 +60,17 @@ class ServerHelper
 	end
 end
 
-if ARGV.length != 3 then
-	puts "usage: #{$0} [local host] [local port] [key]"
+if ARGV.length != 2 then
+	puts "usage: #{$0} [local host] [local port]"
 	exit
 end
 
-local_host, local_port, key = ARGV
+local_host, local_port = ARGV
 debug = true
 
 
 socket = TCPServer.new(local_host, local_port)
-helper = ServerHelper.new(key)
+helper = ServerHelper.new
 
 loop do
   client = socket.accept

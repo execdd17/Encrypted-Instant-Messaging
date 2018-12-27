@@ -4,4 +4,5 @@ $:.unshift(File.join(File.dirname(__FILE__), '..', 'lib/encrypted_instant_messag
 module EncryptedInstantMessaging
   require 'encrypted_instant_messaging/engine'	
   require 'encrypted_instant_messaging/client_manager'		
+  require 'encrypted_instant_messaging/message'		
 end
