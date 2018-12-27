@@ -60,16 +60,18 @@ class ServerHelper
 	end
 end
 
-if ARGV.length != 2 then
-	puts "usage: #{$0} [local host] [local port]"
+logger = Logger.new(STDOUT)
+logger.level = Logger::INFO
+
+if ARGV.length != 1 then
+	puts "usage: #{$0} [local port]"
 	exit
 end
 
-local_host, local_port = ARGV
-debug = true
+local_port = ARGV.shift
+logger.info "Starting a server on port #{local_port}"
 
-
-socket = TCPServer.new(local_host, local_port)
+socket = TCPServer.new("localhost", local_port)
 helper = ServerHelper.new
 
 loop do

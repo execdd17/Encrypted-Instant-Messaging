@@ -14,7 +14,6 @@ if ARGV.length != 4 then
 	exit
 end
 
-
 remote_host, remote_port, handle, key = ARGV
 debug = false
 
